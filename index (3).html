@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Optimal Binary Search Tree Visualizer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f5f3;
+      --bg3: #ebebea;
+      --text: #1a1a18;
+      --text2: #6b6b66;
+      --text3: #a0a09a;
+      --border: rgba(0,0,0,0.12);
+      --border2: rgba(0,0,0,0.22);
+      --info-bg: #e6f1fb;
+      --info-text: #185fa5;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1c;
+        --bg2: #2a2a28;
+        --bg3: #333331;
+        --text: #e8e8e4;
+        --text2: #a0a09a;
+        --text3: #6b6b66;
+        --border: rgba(255,255,255,0.12);
+        --border2: rgba(255,255,255,0.22);
+        --info-bg: #0c2c4a;
+        --info-text: #85b7eb;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: var(--text2);
+      margin-bottom: 1.5rem;
+    }
+
+    .ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .ctrl-row label {
+      font-size: 13px;
+      color: var(--text2);
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text2);
+      margin-bottom: 6px;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+
+    .key-grid {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 1.2rem;
+    }
+    .key-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    .key-cell input {
+      width: 52px;
+      text-align: center;
+      border: 0.5px solid var(--border2);
+      border-radius: 6px;
+      padding: 5px 6px;
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .key-cell input:focus { border-color: #534AB7; }
+    .key-cell span {
+      font-size: 11px;
+      color: var(--text3);
+    }
+
+    .btn {
+      border: 0.5px solid var(--border2);
+      background: transparent;
+      border-radius: var(--radius-md);
+      padding: 6px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text);
+      transition: background .15s, transform .1s;
+    }
+    .btn:hover { background: var(--bg2); }
+    .btn:active { transform: scale(0.97); }
+    .btn.primary {
+      background: var(--info-bg);
+      color: var(--info-text);
+      border-color: transparent;
+      font-weight: 500;
+    }
+    .btn.primary:hover { opacity: .85; }
+
+    input[type="range"] {
+      accent-color: #534AB7;
+      cursor: pointer;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 600px) { .panels { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--bg2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+    }
+
+    table.dp {
+      border-collapse: collapse;
+      font-size: 12px;
+      width: 100%;
+    }
+    table.dp th {
+      font-weight: 500;
+      font-size: 11px;
+      color: var(--text2);
+      padding: 4px 7px;
+      text-align: center;
+    }
+    table.dp td {
+      padding: 5px 7px;
+      text-align: center;
+      border: 0.5px solid var(--border);
+      border-radius: 4px;
+      transition: background .3s, color .3s;
+      color: var(--text);
+      min-width: 46px;
+    }
+    td.active    { background: #EEEDFE; color: #3C3489; font-weight: 500; }
+    td.done      { background: #E1F5EE; color: #085041; }
+    td.root-cell { background: #FAEEDA; color: #633806; font-weight: 500; }
+
+    @media (prefers-color-scheme: dark) {
+      td.active    { background: #2d2a5e; color: #AFA9EC; }
+      td.done      { background: #0a2e22; color: #5DCAA5; }
+      td.root-cell { background: #3a2a0a; color: #FAC775; }
+    }
+
+    .info-bar {
+      font-size: 12px;
+      color: var(--text2);
+      margin-bottom: 8px;
+      min-height: 20px;
+    }
+    .info-bar strong { color: var(--text); font-weight: 500; }
+
+    #tree-wrap { width: 100%; overflow-x: auto; }
+    svg#tree-svg { display: block; margin: 0 auto; }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text2);
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    .formula {
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 0.5px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<h1>Optimal Binary Search Tree</h1>
+<p class="subtitle">Dynamic programming visualizer — step through the algorithm or solve instantly</p>
+
+<div class="ctrl-row">
+  <label>Keys (n):</label>
+  <input type="range" id="n-range" min="2" max="6" value="4" style="width:90px"
+         oninput="setN(+this.value)">
+  <span id="n-lbl" style="font-size:13px;font-weight:500;min-width:16px">4</span>
+  <button class="btn" onclick="randomize()">Randomize</button>
+  <button class="btn primary" id="step-btn" onclick="step()">Step ▶</button>
+  <button class="btn" onclick="runAll()">Solve All</button>
+  <button class="btn" onclick="reset()">Reset</button>
+</div>
+
+<div class="section-title">Probabilities — p[i] (key search) &amp; q[i] (dummy / miss)</div>
+<div class="key-grid" id="key-grid"></div>
+
+<div class="panels">
+  <div class="panel">
+    <div class="section-title">Cost table — e[i][j]</div>
+    <div id="cost-info" class="info-bar"></div>
+    <div style="overflow-x:auto"><table class="dp" id="cost-tbl"></table></div>
+  </div>
+  <div class="panel">
+    <div class="section-title">Root table — root[i][j]</div>
+    <div id="root-info" class="info-bar"></div>
+    <div style="overflow-x:auto"><table class="dp" id="root-tbl"></table></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="section-title">Optimal BST</div>
+  <div id="tree-info" class="info-bar"></div>
+  <div id="tree-wrap">
+    <svg id="tree-svg" width="580" height="24">
+      <text x="290" y="16" text-anchor="middle" font-size="12"
+            fill="var(--text3)">Press "Solve All" or step through to see the tree</text>
+    </svg>
+  </div>
+  <div class="legend">
+    <div class="legend-item">
+      <div class="dot" style="background:#534AB7"></div> Internal node (key)
+    </div>
+    <div class="legend-item">
+      <div class="dot" style="background:#0F6E56"></div> Leaf (dummy key dᵢ)
+    </div>
+    <div class="legend-item">
+      <div style="width:20px;height:2px;background:#534AB7;border-radius:1px;opacity:.5"></div> Edge
+    </div>
+  </div>
+  <div class="formula">
+    Minimises: e[1][n] = Σ (depth(kᵢ)+1)·p[i] + Σ depth(dᵢ)·q[i]
+  </div>
+</div>
+
+<script>
+/* ──────────────────────────────────────────────
+   State
+────────────────────────────────────────────── */
+let N = 4, p = [], q = [], keys = [];
+let e = [], w = [], root = [];
+let steps = [], si = 0, solved = false;
+
+/* ──────────────────────────────────────────────
+   Initialise
+────────────────────────────────────────────── */
+function rp() { return +(Math.random() * 0.18 + 0.02).toFixed(2); }
+
+function setN(n) {
+  N = n;
+  document.getElementById('n-lbl').textContent = n;
+  p = []; q = [];
+  buildInputs();
+  reset();
+}
+
+function randomize() { p = []; q = []; buildInputs(); reset(); }
+
+function buildInputs() {
+  const g = document.getElementById('key-grid');
+  g.innerHTML = '';
+
+  /* generate random probs if missing, then normalise */
+  const pp = Array.from({ length: N },     (_, i) => p[i] || rp());
+  const qq = Array.from({ length: N + 1 }, (_, i) => q[i] || rp());
+  const tot = pp.reduce((a, b) => a + b, 0) + qq.reduce((a, b) => a + b, 0);
+  p = pp.map(v => +(v / tot).toFixed(3));
+  q = qq.map(v => +(v / tot).toFixed(3));
+  keys = Array.from({ length: N }, (_, i) => String.fromCharCode(65 + i));
+
+  for (let i = 0; i < N; i++) {
+    /* key name */
+    const kc = cell();
+    const ki = inp('text', keys[i]);
+    ki.oninput = ev => { keys[i] = ev.target.value || String.fromCharCode(65 + i); reset(); };
+    kc.append(ki, lbl('k' + (i + 1)));
+    g.appendChild(kc);
+
+    /* p[i] */
+    const pc = cell();
+    const pi = inp('number', p[i]);
+    pi.oninput = ev => { p[i] = +ev.target.value; reset(); };
+    pc.append(pi, lbl('p[' + (i + 1) + ']'));
+    g.appendChild(pc);
+
+    /* q[i] */
+    const qc = cell();
+    const qi = inp('number', q[i]);
+    qi.oninput = ev => { q[i] = +ev.target.value; reset(); };
+    qc.append(qi, lbl('q[' + i + ']'));
+    g.appendChild(qc);
+  }
+
+  /* last dummy q[N] */
+  const qc = cell();
+  const qi = inp('number', q[N]);
+  qi.oninput = ev => { q[N] = +ev.target.value; reset(); };
+  qc.append(qi, lbl('q[' + N + ']'));
+  g.appendChild(qc);
+}
+
+function cell() { const d = document.createElement('div'); d.className = 'key-cell'; return d; }
+function lbl(t) { const s = document.createElement('span'); s.textContent = t; return s; }
+function inp(type, val) {
+  const i = document.createElement('input');
+  i.type = type;
+  i.value = (type === 'number') ? (+val).toFixed(3) : val;
+  if (type === 'number') { i.step = '0.001'; i.min = '0.001'; i.max = '0.999'; }
+  return i;
+}
+
+/* ──────────────────────────────────────────────
+   DP core
+────────────────────────────────────────────── */
+function initDP() {
+  e = []; w = []; root = [];
+  for (let i = 0; i <= N + 1; i++) { e[i] = []; w[i] = []; root[i] = []; }
+  for (let i = 1; i <= N + 1; i++) { e[i][i - 1] = q[i - 1]; w[i][i - 1] = q[i - 1]; }
+
+  steps = [];
+  for (let l = 1; l <= N; l++)
+    for (let i = 1; i <= N - l + 1; i++)
+      steps.push({ i, j: i + l - 1 });
+
+  si = 0; solved = false;
+}
+
+function computeStep(s) {
+  const { i, j } = s;
+  w[i][j] = w[i][j - 1] + p[j - 1] + q[j];
+  let minCost = Infinity, bestR = -1;
+  for (let r = i; r <= j; r++) {
+    const c = (e[i][r - 1] || 0) + (e[r + 1]?.[j] || 0) + w[i][j];
+    if (c < minCost) { minCost = c; bestR = r; }
+  }
+  e[i][j] = +minCost.toFixed(4);
+  root[i][j] = bestR;
+}
+
+/* ──────────────────────────────────────────────
+   Controls
+────────────────────────────────────────────── */
+function step() {
+  if (!steps.length) initDP();
+  if (si >= steps.length) { drawTree(1, N); return; }
+  computeStep(steps[si]);
+  const { i, j } = steps[si];
+  renderTables(i, j);
+  document.getElementById('cost-info').innerHTML =
+    `<strong>e[${i}][${j}]</strong> = ${e[i][j].toFixed(4)} &nbsp;|&nbsp; best root: key <strong>${root[i][j]}</strong> (${keys[root[i][j] - 1]})`;
+  document.getElementById('root-info').innerHTML =
+    `<strong>root[${i}][${j}]</strong> = ${root[i][j]} &mdash; key ${keys[root[i][j] - 1]}`;
+  si++;
+  if (si >= steps.length) {
+    solved = true;
+    document.getElementById('step-btn').textContent = 'Draw tree';
+  }
+  drawTree(i, j);
+}
+
+function runAll() {
+  initDP();
+  for (const s of steps) computeStep(s);
+  si = steps.length; solved = true;
+  renderTables(-1, -1);
+  document.getElementById('cost-info').innerHTML =
+    `<strong>Optimal cost e[1][${N}]</strong> = ${e[1][N].toFixed(4)}`;
+  document.getElementById('root-info').innerHTML =
+    `Root = key <strong>${root[1][N]}</strong> (${keys[root[1][N] - 1]})`;
+  drawTree();
+}
+
+function reset() {
+  initDP();
+  renderTables(-1, -1);
+  document.getElementById('cost-info').innerHTML = '';
+  document.getElementById('root-info').innerHTML = '';
+  document.getElementById('step-btn').textContent = 'Step ▶';
+  document.getElementById('tree-info').innerHTML = '';
+  const svg = document.getElementById('tree-svg');
+  svg.innerHTML = `<text x="290" y="16" text-anchor="middle" font-size="12"
+    fill="var(--text3)">Press "Solve All" or step through to see the tree</text>`;
+  svg.setAttribute('height', 24);
+}
+
+/* ──────────────────────────────────────────────
+   Table renderer
+────────────────────────────────────────────── */
+function renderTables(ai, aj) {
+  const ct = document.getElementById('cost-tbl');
+  const rt = document.getElementById('root-tbl');
+  ct.innerHTML = ''; rt.innerHTML = '';
+
+  const hdr1 = document.createElement('tr');
+  const hdr2 = document.createElement('tr');
+  hdr1.appendChild(th('i \\ j')); hdr2.appendChild(th('i \\ j'));
+  for (let j = 0; j <= N; j++) {
+    hdr1.appendChild(th(j === 0 ? 'j=0' : 'j=' + j));
+    hdr2.appendChild(th(j === 0 ? 'j=0' : 'j=' + j));
+  }
+  ct.appendChild(hdr1); rt.appendChild(hdr2);
+
+  for (let i = 1; i <= N + 1; i++) {
+    const tr1 = document.createElement('tr');
+    const tr2 = document.createElement('tr');
+    tr1.appendChild(th('i=' + i)); tr2.appendChild(th('i=' + i));
+
+    for (let j = 0; j <= N; j++) {
+      const td1 = document.createElement('td');
+      const td2 = document.createElement('td');
+
+      if (j >= i - 1) {
+        const val = (e[i] && e[i][j] !== undefined) ? e[i][j].toFixed(3) : '';
+        td1.textContent = val || '—';
+        if (ai === i && aj === j) td1.className = 'active';
+        else if (val) td1.className = 'done';
+
+        const rv = (root[i] && root[i][j] !== undefined) ? keys[root[i][j] - 1] : '';
+        td2.textContent = rv || '—';
+        if (ai === i && aj === j) td2.className = 'root-cell';
+        else if (rv) td2.className = 'done';
+      }
+      tr1.appendChild(td1); tr2.appendChild(td2);
+    }
+    ct.appendChild(tr1); rt.appendChild(tr2);
+  }
+}
+
+function th(t) {
+  const h = document.createElement('th');
+  h.textContent = t;
+  return h;
+}
+
+/* ──────────────────────────────────────────────
+   Tree renderer
+────────────────────────────────────────────── */
+function drawTree(subI, subJ) {
+  const i0 = (subI !== undefined) ? subI : 1;
+  const j0 = (subJ !== undefined) ? subJ : N;
+
+  /* Guard: need root for this range to be computed */
+  if (!root[i0] || root[i0][j0] === undefined) return;
+
+  const isFull = (i0 === 1 && j0 === N);
+  const treeInfo = document.getElementById('tree-info');
+  if (isFull) {
+    treeInfo.innerHTML = `<strong>Full OBST</strong> — optimal cost e[1][${N}] = ${e[1][N].toFixed(4)}`;
+  } else {
+    treeInfo.innerHTML =
+      `Showing subtree for keys <strong>${i0}..${j0}</strong>
+       (k<sub>${i0}</sub>..k<sub>${j0}</sub>) — root: <strong>${keys[root[i0][j0]-1]}</strong>`;
+  }
+
+  const W = 580, nodeR = 20, leafR = 13;
+  const nodes = [], edges = [];
+
+  function build(i, j, depth, xL, xR) {
+    const x = (xL + xR) / 2;
+    const y = depth * 80 + 40;
+    if (i > j) {
+      nodes.push({ x, y, label: 'd' + (i - 1), type: 'leaf', depth });
+      return { x, y, type: 'leaf' };
+    }
+    const r = root[i][j];
+    const isCurrentRoot = (i === i0 && j === j0);
+    nodes.push({ x, y, label: keys[r - 1], type: 'key', depth, cost: e[i][j], highlight: isCurrentRoot });
+    const mid = (xL + xR) / 2;
+    const L = build(i, r - 1, depth + 1, xL, mid);
+    const R = build(r + 1, j, depth + 1, mid, xR);
+    edges.push({ x1: x, y1: y + nodeR, x2: L.x, y2: L.y - (L.type === 'leaf' ? leafR : nodeR) });
+    edges.push({ x1: x, y1: y + nodeR, x2: R.x, y2: R.y - (R.type === 'leaf' ? leafR : nodeR) });
+    return { x, y, type: 'key' };
+  }
+
+  build(i0, j0, 0, 10, W - 10);
+
+  const maxD = Math.max(...nodes.map(n => n.depth));
+  const H = (maxD + 1) * 80 + 80;
+
+  const svg = document.getElementById('tree-svg');
+  svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  let html = '';
+
+  /* edges */
+  for (const ed of edges) {
+    html += `<line x1="${ed.x1.toFixed(1)}" y1="${ed.y1.toFixed(1)}"
+                   x2="${ed.x2.toFixed(1)}" y2="${ed.y2.toFixed(1)}"
+                   stroke="#534AB7" stroke-width="1.5" stroke-opacity="0.35"/>`;
+  }
+
+  /* nodes */
+  for (const n of nodes) {
+    if (n.type === 'key') {
+      const fill   = n.highlight ? '#534AB7' : '#EEEDFE';
+      const stroke = '#534AB7';
+      const tFill  = n.highlight ? '#ffffff' : '#3C3489';
+      html += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${nodeR}"
+                       fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`;
+      html += `<text x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}"
+                     text-anchor="middle" dominant-baseline="central"
+                     font-size="14" font-weight="500" fill="${tFill}">${n.label}</text>`;
+      if (n.cost !== undefined) {
+        html += `<text x="${n.x.toFixed(1)}" y="${(n.y + nodeR + 14).toFixed(1)}"
+                       text-anchor="middle" font-size="10" fill="#7F77DD"
+                       opacity="0.85">${n.cost.toFixed(3)}</text>`;
+      }
+    } else {
+      html += `<rect x="${(n.x - leafR).toFixed(1)}" y="${(n.y - leafR).toFixed(1)}"
+                     width="${leafR * 2}" height="${leafR * 2}" rx="5"
+                     fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.2"/>`;
+      html += `<text x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}"
+                     text-anchor="middle" dominant-baseline="central"
+                     font-size="10" fill="#085041">${n.label}</text>`;
+    }
+  }
+
+  svg.innerHTML = html;
+}
+
+/* ──────────────────────────────────────────────
+   Boot
+────────────────────────────────────────────── */
+buildInputs();
+renderTables(-1, -1);
+</script>
+</body>
+</html>

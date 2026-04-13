@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>OBST: Dynamic Programming vs Brute Force</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0eeea;--bg2:#ffffff;--bg3:#f7f5f2;--bg4:#ede9e3;
+  --text:#1a1816;--text2:#5c5750;--text3:#9e9890;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.15);
+  --radius-md:10px;--radius-lg:16px;
+  --dp:#4a6cf7;--dp-l:#6b8afb;--dp-bg:rgba(74,108,247,.09);--dp-bg2:rgba(74,108,247,.16);--dp-t:#2a4acc;
+  --bf:#e8622a;--bf-l:#f0845a;--bf-bg:rgba(232,98,42,.09);--bf-bg2:rgba(232,98,42,.16);--bf-t:#c04010;
+  --green:#1a9e6a;--green-bg:rgba(26,158,106,.10);
+}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);padding:1.5rem;max-width:1440px;margin:0 auto}
+
+/* HEADER */
+.hdr{text-align:center;padding:2rem 1rem 1.8rem;margin-bottom:1.5rem;position:relative}
+.hdr::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:140px;height:2.5px;background:linear-gradient(90deg,var(--dp),var(--bf));border-radius:2px}
+.hdr-title{font-size:27px;font-weight:800;letter-spacing:-.5px;background:linear-gradient(135deg,var(--dp),#7b5ea7,var(--bf));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
+.hdr-sub{font-size:13px;font-weight:700;color:var(--text2);margin-bottom:6px}
+.hdr-desc{font-size:12px;color:var(--text3)}
+
+/* SHARED BAR */
+.shared-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:1.2rem;padding:12px 18px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);box-shadow:0 2px 12px rgba(0,0,0,.07)}
+.shared-bar label{font-size:13px;color:var(--text2)}
+.n-disp{font-size:20px;font-weight:800;min-width:24px;text-align:center;color:var(--dp)}
+input[type=range]{accent-color:var(--dp);cursor:pointer}
+.bar-sep{width:1px;height:22px;background:var(--border2)}
+
+/* KEY GRID */
+.prob-sec{margin-bottom:1.2rem}
+.prob-ttl{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.key-grid{display:flex;gap:5px;flex-wrap:wrap}
+.key-cell{display:flex;flex-direction:column;align-items:center;gap:3px}
+.key-cell input{width:54px;text-align:center;border:1px solid var(--border2);border-radius:8px;padding:5px 4px;font-size:12px;background:var(--bg3);color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s}
+.key-cell input:focus{border-color:var(--dp);box-shadow:0 0 0 3px rgba(74,108,247,.15)}
+.key-cell span{font-size:10px;color:var(--text3)}
+
+/* BUTTONS */
+.btn{border:1px solid var(--border2);background:var(--bg3);border-radius:var(--radius-md);padding:7px 16px;font-size:12px;cursor:pointer;color:var(--text2);transition:all .18s;white-space:nowrap;font-weight:500}
+.btn:hover{background:var(--bg4);color:var(--text);border-color:#aaa}
+.btn:active{transform:scale(.96)}
+.btn.dp-btn{background:rgba(74,108,247,.12);color:var(--dp-t);border-color:rgba(74,108,247,.35);font-weight:700}
+.btn.dp-btn:hover{background:rgba(74,108,247,.22);box-shadow:0 0 14px rgba(74,108,247,.18)}
+.btn.bf-btn{background:rgba(232,98,42,.12);color:var(--bf-t);border-color:rgba(232,98,42,.35);font-weight:700}
+.btn.bf-btn:hover{background:rgba(232,98,42,.22);box-shadow:0 0 14px rgba(232,98,42,.18)}
+
+/* LAYOUT */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:920px){.compare-grid{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:12px}
+
+/* COL HEADER */
+.col-header{display:flex;align-items:center;gap:10px;padding:13px 16px;border-radius:var(--radius-lg);font-size:14px;font-weight:700;position:relative;overflow:hidden}
+.col-header::before{content:'';position:absolute;inset:0;opacity:.04;background:radial-gradient(ellipse at 0% 50%,black 0%,transparent 70%)}
+.dp-hdr{background:linear-gradient(135deg,rgba(74,108,247,.14),rgba(74,108,247,.05));color:var(--dp-t);border:1px solid rgba(74,108,247,.25);box-shadow:0 2px 12px rgba(74,108,247,.12)}
+.bf-hdr{background:linear-gradient(135deg,rgba(232,98,42,.14),rgba(232,98,42,.05));color:var(--bf-t);border:1px solid rgba(232,98,42,.25);box-shadow:0 2px 12px rgba(232,98,42,.12)}
+.badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(0,0,0,.07);letter-spacing:.02em}
+.col-desc{font-size:11px;opacity:.6;margin-left:auto}
+
+/* SECTION TITLE */
+.sec-ttl{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+
+/* CTRL ROW */
+.ctrl-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.step-ctr{font-size:11px;color:var(--text3);margin-left:auto;font-variant-numeric:tabular-nums}
+
+/* PROGRESS */
+.prog-track{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;border:1px solid var(--border)}
+.prog-fill{height:100%;border-radius:3px;transition:width .35s cubic-bezier(.4,0,.2,1)}
+.pf-dp{background:linear-gradient(90deg,var(--dp),var(--dp-l))}
+.pf-bf{background:linear-gradient(90deg,var(--bf),var(--bf-l))}
+.prog-lbl{font-size:10px;color:var(--text3);margin-top:4px}
+
+/* PANEL */
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;transition:border-color .3s,box-shadow .3s}
+.panel:hover{border-color:var(--border2);box-shadow:0 4px 20px rgba(0,0,0,.07)}
+
+/* INFO BAR */
+.info-bar{font-size:11px;color:var(--text2);margin-bottom:8px;min-height:18px}
+.info-bar strong{color:var(--text);font-weight:600}
+
+/* ── DP TABLE — visual style matching Image 2 ── */
+.dp-tbl-wrap{overflow-x:auto}
+table.dp{border-collapse:separate;border-spacing:4px;font-size:11px;width:100%}
+table.dp th{font-weight:700;font-size:10px;color:var(--text3);padding:4px 6px;text-align:center;letter-spacing:.04em}
+table.dp td{padding:8px 5px;text-align:center;border-radius:8px;font-size:11px;transition:all .28s cubic-bezier(.4,0,.2,1);min-width:44px;background:#eeece8;border:1px solid #dedad4;line-height:1.35;cursor:default}
+table.dp td .cv{font-weight:700;font-size:12px;display:block;color:var(--text)}
+table.dp td .cr{font-size:9px;color:var(--text3);display:block;margin-top:1px}
+table.dp td .cd{color:var(--text3);font-size:13px}
+
+/* chain length color classes — vivid pastels matching legend swatches */
+td.cl0{background:#a8d5a2 !important;border-color:#6db868 !important}
+td.cl0 .cv{color:#1a5218 !important}
+td.cl1{background:#a0c8f0 !important;border-color:#5a9de0 !important}
+td.cl1 .cv{color:#0d3d82 !important}
+td.cl2{background:#fdd090 !important;border-color:#f0a030 !important}
+td.cl2 .cv{color:#6b3a00 !important}
+td.cl3{background:#f0a0a0 !important;border-color:#d85050 !important}
+td.cl3 .cv{color:#6b0a0a !important}
+td.cl4{background:#c8a8e8 !important;border-color:#9060cc !important}
+td.cl4 .cv{color:#3a0a7a !important}
+
+td.active{background:rgba(74,108,247,.18)!important;border-color:var(--dp)!important;box-shadow:0 0 0 2px rgba(74,108,247,.25),0 2px 14px rgba(74,108,247,.2);transform:scale(1.07);z-index:2;position:relative}
+td.active .cv{color:var(--dp-t)!important}
+
+/* chain legend */
+.chain-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.cl-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text3)}
+.cl-sw{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+
+/* FORMULA BOX */
+.fbox{margin-top:10px;padding:10px 12px;background:rgba(74,108,247,.06);border:1px solid rgba(74,108,247,.18);border-radius:var(--radius-md);font-size:11px;color:var(--text2);line-height:1.7;display:none}
+.fbox.on{display:block}
+.frow{display:flex;flex-wrap:wrap;gap:5px;align-items:baseline;margin-bottom:2px}
+.flbl{font-weight:700;color:var(--dp-t);min-width:82px}
+.fval{font-family:monospace;font-size:11px;color:var(--text2)}
+.fcand{font-family:monospace;font-size:10px;padding:2px 6px;background:rgba(74,108,247,.09);border-radius:4px;color:var(--dp-t);border:1px solid rgba(74,108,247,.2)}
+.fbest{font-family:monospace;font-size:10px;padding:2px 6px;background:rgba(26,158,106,.12);border-radius:4px;color:var(--green);font-weight:700;border:1px solid rgba(26,158,106,.28)}
+
+/* BF LOG */
+.log-leg{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.log-leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text3)}
+.log-pip{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.call-log{height:185px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent}
+.le{padding:3px 8px;border-radius:5px;border-left:3px solid transparent;font-size:10.5px;font-family:monospace;color:var(--text2);line-height:1.5}
+.le-base{border-color:var(--green);background:rgba(26,158,106,.08);color:#1a6b4a}
+.le-new{border-color:var(--dp);background:rgba(74,108,247,.07);color:var(--dp-t)}
+.le-redundant{border-color:var(--bf);background:rgba(232,98,42,.07);color:var(--bf-t)}
+.le-current{border-color:var(--bf-l);background:rgba(232,98,42,.18);color:#7a1e00;font-weight:700}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+.stat-card{background:var(--bg3);border-radius:var(--radius-md);padding:10px;text-align:center;border:1px solid var(--border);transition:border-color .2s,transform .2s}
+.stat-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.stat-lbl{font-size:9px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+.stat-val{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.sv-t{color:var(--text)}.sv-u{color:var(--dp)}.sv-r{color:var(--bf)}
+
+/* TREE */
+.tree-wrap{width:100%;overflow-x:auto}
+.tree-wrap svg{display:block;margin:0 auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text2)}
+.dot{width:9px;height:9px;border-radius:50%}
+.fnote{font-size:10px;color:var(--text3);margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+
+/* DIVIDER */
+.divider{display:flex;align-items:center;gap:12px;margin-bottom:1.2rem;font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--border2),transparent)}
+
+/* COMPARISON SUMMARY */
+.cmp-summary{display:none;margin-top:16px;border-radius:var(--radius-lg);padding:20px;background:linear-gradient(135deg,rgba(74,108,247,.06),rgba(232,98,42,.06));border:1px solid var(--border2);box-shadow:0 4px 20px rgba(0,0,0,.08)}
+.cmp-summary.on{display:block;animation:fadeUp .4s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.cmp-title{font-size:14px;font-weight:700;margin-bottom:14px;color:var(--text)}
+.cmp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:600px){.cmp-grid{grid-template-columns:1fr}}
+.cmp-card{background:var(--bg3);border-radius:var(--radius-md);padding:14px;border:1px solid var(--border)}
+.cmp-lbl{font-size:9px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em}
+.cmp-row{display:flex;justify-content:space-between;font-size:12px;margin-top:5px}
+.cmp-dp{color:var(--dp);font-weight:700}.cmp-bf{color:var(--bf);font-weight:700}
+.cmp-note{font-size:10px;color:var(--text3);margin-top:8px}
+.cmp-winner{font-size:13px;font-weight:600;margin-top:14px;text-align:center;color:var(--text2);padding:10px;background:var(--bg3);border-radius:var(--radius-md);border:1px solid var(--border)}
+.cmp-winner strong{color:var(--dp)}
+
+/* CHART SECTION */
+.chart-sec{display:none;margin-top:18px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:22px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+.chart-sec.on{display:block;animation:fadeUp .5s ease .1s both}
+.chart-hdr{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.chart-hdr-title{font-size:15px;font-weight:800;color:var(--text)}
+.chart-chip{font-size:10px;padding:3px 10px;border-radius:20px;background:linear-gradient(135deg,rgba(74,108,247,.1),rgba(232,98,42,.08));color:var(--text2);font-weight:600;border:1px solid var(--border2)}
+.chart-sub{font-size:11px;color:var(--text3);margin-bottom:18px}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:700px){.chart-grid{grid-template-columns:1fr}}
+.chart-lbl{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:10px;text-align:center}
+.chart-footer{font-size:10px;color:var(--text3);text-align:center;margin-top:14px;font-style:italic;line-height:1.5}
+canvas{border-radius:var(--radius-md)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-title">Optimal Binary Search Tree</div>
+  <div class="hdr-sub">Dynamic Programming &nbsp;vs&nbsp; Brute Force</div>
+  <div class="hdr-desc">Same inputs · same optimal result · dramatically different process — step through side by side</div>
+</div>
+
+<div class="shared-bar">
+  <label>Keys (n):</label>
+  <input type="range" id="n-range" min="2" max="6" value="4" style="width:90px" oninput="setN(+this.value)">
+  <span class="n-disp" id="n-lbl">4</span>
+  <div class="bar-sep"></div>
+  <button class="btn" onclick="randomize()">⟳ Randomize</button>
+  <button class="btn" onclick="resetAll()">↺ Reset All</button>
+</div>
+
+<div class="prob-sec">
+  <div class="prob-ttl">Shared probabilities — p[i] (key search) &amp; q[i] (dummy / miss)</div>
+  <div class="key-grid" id="key-grid"></div>
+</div>
+
+<div class="divider">parallel comparison — step independently or solve all at once</div>
+
+<div class="compare-grid">
+
+  <!-- LEFT: DP -->
+  <div class="col">
+    <div class="col-header dp-hdr">
+      <span class="badge">O(n³)</span>
+      Dynamic Programming
+      <span class="col-desc">bottom-up · no redundancy</span>
+    </div>
+    <div class="ctrl-row">
+      <button class="btn dp-btn" id="dp-step-btn" onclick="dpStep()">Step ▶</button>
+      <button class="btn" onclick="dpSolveAll()">Solve All</button>
+      <span class="step-ctr" id="dp-counter">0 / 0 steps</span>
+    </div>
+    <div>
+      <div class="prog-track"><div class="prog-fill pf-dp" id="dp-prog" style="width:0%"></div></div>
+      <div class="prog-lbl" id="dp-prog-lbl">Not started</div>
+    </div>
+    <div class="panel">
+      <div class="sec-ttl">Cost table — e[i][j]</div>
+      <div id="dp-cost-info" class="info-bar"></div>
+      <div class="dp-tbl-wrap"><table class="dp" id="dp-cost-tbl"></table></div>
+      <div class="chain-legend" id="dp-chain-legend"></div>
+      <div class="fbox" id="dp-fbox"></div>
+    </div>
+    <div class="panel">
+      <div class="sec-ttl">Root table — root[i][j]</div>
+      <div id="dp-root-info" class="info-bar"></div>
+      <div class="dp-tbl-wrap"><table class="dp" id="dp-root-tbl"></table></div>
+    </div>
+    <div class="panel">
+      <div class="sec-ttl">Optimal BST</div>
+      <div id="dp-tree-info" class="info-bar"></div>
+      <div class="tree-wrap">
+        <svg id="dp-tree-svg" width="420" height="28">
+          <text x="210" y="18" text-anchor="middle" font-size="12" fill="#9e9890">Solve to see the tree</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="dot" style="background:#4a6cf7"></div>Key node</div>
+        <div class="legend-item"><div class="dot" style="background:#1a9e6a"></div>Dummy leaf dᵢ</div>
+      </div>
+      <div class="fnote">Minimises: e[1][n] = Σ (depth(kᵢ)+1)·p[i] + Σ depth(dᵢ)·q[i]</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: BF -->
+  <div class="col">
+    <div class="col-header bf-hdr">
+      <span class="badge">O(4ⁿ)</span>
+      Brute Force
+      <span class="col-desc">recursive · recomputes everything</span>
+    </div>
+    <div class="ctrl-row">
+      <button class="btn bf-btn" id="bf-step-btn" onclick="bfStep()">Step ▶</button>
+      <button class="btn" onclick="bfSolveAll()">Solve All</button>
+      <span class="step-ctr" id="bf-counter">0 / 0 calls</span>
+    </div>
+    <div>
+      <div class="prog-track"><div class="prog-fill pf-bf" id="bf-prog" style="width:0%"></div></div>
+      <div class="prog-lbl" id="bf-prog-lbl">Not started</div>
+    </div>
+    <div class="panel">
+      <div class="sec-ttl">Recursive call log</div>
+      <div class="log-leg">
+        <div class="log-leg-item"><div class="log-pip" style="background:#34d399"></div>Base case (i&gt;j)</div>
+        <div class="log-leg-item"><div class="log-pip" style="background:#7c6ff7"></div>New subproblem</div>
+        <div class="log-leg-item"><div class="log-pip" style="background:#f97043"></div>Redundant recomputation</div>
+      </div>
+      <div class="call-log" id="bf-log"></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-lbl">Total calls</div><div class="stat-val sv-t" id="bf-total">0</div></div>
+        <div class="stat-card"><div class="stat-lbl">Unique</div><div class="stat-val sv-u" id="bf-unique">0</div></div>
+        <div class="stat-card"><div class="stat-lbl">Redundant</div><div class="stat-val sv-r" id="bf-redund">0</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="sec-ttl">Resulting BST (identical to DP)</div>
+      <div id="bf-tree-info" class="info-bar"></div>
+      <div class="tree-wrap">
+        <svg id="bf-tree-svg" width="420" height="28">
+          <text x="210" y="18" text-anchor="middle" font-size="12" fill="#9e9890">Solve to see the tree</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="dot" style="background:#e8622a"></div>Key node</div>
+        <div class="legend-item"><div class="dot" style="background:#1a9e6a"></div>Dummy leaf dᵢ</div>
+      </div>
+      <div class="fnote">Same optimal structure found by exhaustive recursion — no memoization</div>
+    </div>
+  </div>
+</div>
+
+<!-- Comparison Summary -->
+<div class="cmp-summary" id="cmp-summary">
+  <div class="cmp-title">✓ Comparison — Both approaches solved</div>
+  <div class="cmp-grid">
+    <div class="cmp-card">
+      <div class="cmp-lbl">Total steps / calls</div>
+      <div class="cmp-row"><span>DP:</span><span class="cmp-dp" id="cmp-dp-steps">—</span></div>
+      <div class="cmp-row"><span>BF:</span><span class="cmp-bf" id="cmp-bf-steps">—</span></div>
+      <div class="cmp-note" id="cmp-ratio"></div>
+    </div>
+    <div class="cmp-card">
+      <div class="cmp-lbl">Subproblem efficiency</div>
+      <div class="cmp-row"><span>DP unique:</span><span class="cmp-dp" id="cmp-dp-u">—</span></div>
+      <div class="cmp-row"><span>BF unique:</span><span class="cmp-dp" id="cmp-bf-u">—</span></div>
+      <div class="cmp-row"><span>BF redundant:</span><span class="cmp-bf" id="cmp-bf-r">—</span></div>
+    </div>
+    <div class="cmp-card">
+      <div class="cmp-lbl">Optimal cost e[1][n]</div>
+      <div class="cmp-row"><span>DP result:</span><span class="cmp-dp" id="cmp-dp-cost">—</span></div>
+      <div class="cmp-row"><span>BF result:</span><span class="cmp-bf" id="cmp-bf-cost">—</span></div>
+      <div class="cmp-note">✓ Both find the same optimal tree</div>
+    </div>
+  </div>
+  <div class="cmp-winner" id="cmp-winner"></div>
+</div>
+
+<!-- Efficiency Analysis Charts -->
+<div class="chart-sec" id="chart-sec">
+  <div class="chart-hdr">
+    <span class="chart-hdr-title">📊 Graphical Analysis</span>
+    <span class="chart-chip">Figure 5: Brute Force vs Dynamic Programming — Efficiency Analysis</span>
+  </div>
+  <div class="chart-sub">Operations count — Brute Force (exponential) vs DP O(n³). Measured for current n=<span id="chart-n-lbl">4</span>, estimated for others.</div>
+  <div class="chart-grid">
+    <div>
+      <div class="chart-lbl">Operations: Brute Force vs DP (log scale)</div>
+      <canvas id="chart-ops" height="230"></canvas>
+    </div>
+    <div>
+      <div class="chart-lbl">Concrete Comparison: n=<span id="chart-n2">4</span> and n=10</div>
+      <canvas id="chart-conc" height="230"></canvas>
+    </div>
+  </div>
+  <div class="chart-footer">
+    Operations count — Brute Force (exponential growth) vs DP O(n³).<br>
+    For n &gt; 6, DP is orders of magnitude more efficient.
+  </div>
+</div>
+
+<script>
+/* ─── STATE ─────────────────────────────── */
+let N=4,p=[],q=[],keys=[];
+function rp(){return +(Math.random()*.18+.02).toFixed(2)}
+function setN(n){N=n;document.getElementById('n-lbl').textContent=n;p=[];q=[];buildInputs();resetAll()}
+function randomize(){p=[];q=[];buildInputs();resetAll()}
+
+function buildInputs(){
+  const g=document.getElementById('key-grid');g.innerHTML='';
+  const pp=Array.from({length:N},(_,i)=>p[i]||rp());
+  const qq=Array.from({length:N+1},(_,i)=>q[i]||rp());
+  const tot=pp.reduce((a,b)=>a+b,0)+qq.reduce((a,b)=>a+b,0);
+  p=pp.map(v=>+(v/tot).toFixed(3));q=qq.map(v=>+(v/tot).toFixed(3));
+  keys=Array.from({length:N},(_,i)=>String.fromCharCode(65+i));
+  for(let i=0;i<N;i++){
+    const kc=mkC();const ki=mkI('text',keys[i]);
+    ki.oninput=ev=>{keys[i]=ev.target.value||String.fromCharCode(65+i);resetAll()};
+    kc.append(ki,mkL('k'+(i+1)));g.appendChild(kc);
+    const pc=mkC();const pi=mkI('number',p[i]);
+    pi.oninput=ev=>{p[i]=+ev.target.value;resetAll()};
+    pc.append(pi,mkL('p['+(i+1)+']'));g.appendChild(pc);
+    const qc=mkC();const qi=mkI('number',q[i]);
+    qi.oninput=ev=>{q[i]=+ev.target.value;resetAll()};
+    qc.append(qi,mkL('q['+i+']'));g.appendChild(qc);
+  }
+  const qc=mkC();const qi=mkI('number',q[N]);
+  qi.oninput=ev=>{q[N]=+ev.target.value;resetAll()};
+  qc.append(qi,mkL('q['+N+']'));g.appendChild(qc);
+}
+function mkC(){const d=document.createElement('div');d.className='key-cell';return d}
+function mkL(t){const s=document.createElement('span');s.textContent=t;return s}
+function mkI(type,val){
+  const i=document.createElement('input');i.type=type;
+  i.value=(type==='number')?(+val).toFixed(3):val;
+  if(type==='number'){i.step='.001';i.min='.001';i.max='.999'}
+  return i;
+}
+
+/* ─── DP LOGIC ──────────────────────────── */
+let dpE=[],dpW=[],dpRoot=[],dpSteps=[],dpSi=0,dpSolved=false;
+
+function dpInit(){
+  dpE=[];dpW=[];dpRoot=[];
+  for(let i=0;i<=N+1;i++){dpE[i]=[];dpW[i]=[];dpRoot[i]=[]}
+  for(let i=1;i<=N+1;i++){dpE[i][i-1]=q[i-1];dpW[i][i-1]=q[i-1]}
+  dpSteps=[];
+  for(let l=1;l<=N;l++)
+    for(let i=1;i<=N-l+1;i++)
+      dpSteps.push({i,j:i+l-1,l});
+  dpSi=0;dpSolved=false;
+}
+
+function dpCompute(s){
+  const{i,j}=s;
+  dpW[i][j]=dpW[i][j-1]+p[j-1]+q[j];
+  let mn=Infinity,br=-1;
+  for(let r=i;r<=j;r++){
+    const c=(dpE[i][r-1]||0)+(dpE[r+1]?.[j]||0)+dpW[i][j];
+    if(c<mn){mn=c;br=r}
+  }
+  dpE[i][j]=+mn.toFixed(4);dpRoot[i][j]=br;
+}
+
+function dpStep(){
+  if(!dpSteps.length)dpInit();
+  if(dpSi>=dpSteps.length){dpDrawTree(1,N);return}
+  dpCompute(dpSteps[dpSi]);
+  const{i,j}=dpSteps[dpSi];
+  dpRenderTables(i,j);
+  document.getElementById('dp-cost-info').innerHTML=
+    `<strong>e[${i}][${j}]</strong> = ${dpE[i][j].toFixed(4)} &nbsp;|&nbsp; best root: <strong>${dpRoot[i][j]}</strong> (${keys[dpRoot[i][j]-1]})`;
+  document.getElementById('dp-root-info').innerHTML=
+    `<strong>root[${i}][${j}]</strong> = ${dpRoot[i][j]} — key ${keys[dpRoot[i][j]-1]}`;
+  dpShowFormula(i,j);dpDrawTree(i,j);
+  dpSi++;dpRefreshProg();
+  if(dpSi>=dpSteps.length){dpSolved=true;document.getElementById('dp-step-btn').textContent='Draw tree ▶';dpDrawTree(1,N);checkBoth()}
+}
+
+function dpSolveAll(){
+  dpInit();
+  for(const s of dpSteps)dpCompute(s);
+  dpSi=dpSteps.length;dpSolved=true;
+  dpRenderTables(-1,-1);
+  document.getElementById('dp-cost-info').innerHTML=`<strong>Optimal cost e[1][${N}]</strong> = ${dpE[1][N].toFixed(4)}`;
+  document.getElementById('dp-root-info').innerHTML=`Root = key <strong>${dpRoot[1][N]}</strong> (${keys[dpRoot[1][N]-1]})`;
+  const fb=document.getElementById('dp-fbox');fb.classList.remove('on');fb.innerHTML='';
+  dpRefreshProg();dpDrawTree(1,N);checkBoth();
+}
+
+function dpRefreshProg(){
+  const tot=dpSteps.length,done=Math.min(dpSi,tot),pct=tot?Math.round(done/tot*100):0;
+  document.getElementById('dp-prog').style.width=pct+'%';
+  document.getElementById('dp-counter').textContent=`${done} / ${tot} steps`;
+  document.getElementById('dp-prog-lbl').textContent=dpSolved?`Done — ${tot} unique subproblems`:`Step ${done} of ${tot}`;
+}
+
+function clCls(l){return['cl0','cl1','cl2','cl3','cl4'][Math.min(l,4)]}
+function clCol(l){return['#a8d5a2','#a0c8f0','#fdd090','#f0a0a0','#c8a8e8'][Math.min(l,4)]}
+
+function dpRenderTables(ai,aj){
+  const ct=document.getElementById('dp-cost-tbl'),rt=document.getElementById('dp-root-tbl');
+  ct.innerHTML='';rt.innerHTML='';
+  const h1=document.createElement('tr'),h2=document.createElement('tr');
+  h1.appendChild(mkTh(''));h2.appendChild(mkTh(''));
+  for(let j=0;j<=N;j++){h1.appendChild(mkTh('j='+j));h2.appendChild(mkTh('j='+j))}
+  ct.appendChild(h1);rt.appendChild(h2);
+  for(let i=1;i<=N+1;i++){
+    const r1=document.createElement('tr'),r2=document.createElement('tr');
+    r1.appendChild(mkTh('i='+i));r2.appendChild(mkTh('i='+i));
+    for(let j=0;j<=N;j++){
+      const t1=document.createElement('td'),t2=document.createElement('td');
+      if(j>=i-1){
+        const val=(dpE[i]&&dpE[i][j]!==undefined)?dpE[i][j].toFixed(3):'';
+        const cl=j===i-1?0:j-i+1;
+        if(ai===i&&aj===j){
+          t1.className='active';
+          t1.innerHTML=`<span class="cv">${val||'—'}</span>`;
+        } else if(val){
+          t1.className=clCls(cl);
+          t1.innerHTML=`<span class="cv">${val}</span>`;
+        } else {
+          t1.innerHTML=`<span class="cd">—</span>`;
+        }
+        const rv=(dpRoot[i]&&dpRoot[i][j]!==undefined)?keys[dpRoot[i][j]-1]:'';
+        if(ai===i&&aj===j){
+          t2.className='active';
+          t2.innerHTML=`<span class="cv">${rv||'—'}</span>`;
+        } else if(rv){
+          t2.className=clCls(cl);
+          t2.innerHTML=`<span class="cv">${rv}</span><span class="cr">root=k${dpRoot[i][j]}</span>`;
+        } else {
+          t2.innerHTML=`<span class="cd">—</span>`;
+        }
+      } else {
+        t1.innerHTML=`<span class="cd"></span>`;
+        t2.innerHTML=`<span class="cd"></span>`;
+      }
+      r1.appendChild(t1);r2.appendChild(t2);
+    }
+    ct.appendChild(r1);rt.appendChild(r2);
+  }
+  // Chain legend
+  const leg=document.getElementById('dp-chain-legend');
+  leg.innerHTML='';
+  const maxL=N;
+  const lbls=['Base case (empty tree)','Chain length 1','Chain length 2','Chain length 3',`FINAL ANSWER (chain ${maxL})`];
+  for(let l=0;l<=Math.min(maxL,4);l++){
+    const d=document.createElement('div');d.className='cl-item';
+    const sw=document.createElement('div');sw.className='cl-sw';
+    sw.style.cssText=`background:${clCol(l)};border:1px solid ${clCol(l)}66`;
+    d.appendChild(sw);
+    const lbl=l===0?'Base case (empty tree)':l===maxL&&maxL<=4?`FINAL ANSWER (chain ${l})`:`Chain length ${l}`;
+    d.appendChild(Object.assign(document.createElement('span'),{textContent:lbl}));
+    leg.appendChild(d);
+  }
+}
+function mkTh(t){const h=document.createElement('th');h.textContent=t;return h}
+
+function dpShowFormula(i,j){
+  const fb=document.getElementById('dp-fbox');
+  const wij=dpW[i][j],wi_1=dpW[i][j-1]||0;
+  let bestC=Infinity,bestR=-1;const cands=[];
+  for(let r=i;r<=j;r++){
+    const lc=(dpE[i][r-1]!==undefined?dpE[i][r-1]:q[i-1]);
+    const rc=(dpE[r+1]&&dpE[r+1][j]!==undefined?dpE[r+1][j]:q[j]);
+    const c=+(lc+rc+wij).toFixed(4);
+    cands.push({r,lc,rc,c});
+    if(c<bestC){bestC=c;bestR=r}
+  }
+  let h=`<div class="frow"><span class="flbl">w[${i}][${j}]&nbsp;=</span><span class="fval">w[${i}][${j-1}](${wi_1.toFixed(3)}) + p[${j}](${p[j-1].toFixed(3)}) + q[${j}](${q[j].toFixed(3)}) = <strong>${wij.toFixed(3)}</strong></span></div>`;
+  h+=`<div class="frow" style="margin-top:6px;font-weight:700;color:var(--text)">Try each root r = ${i}..${j}:</div>`;
+  for(const{r,lc,rc,c} of cands){
+    const best=r===bestR;
+    h+=`<div class="frow"><span style="min-width:72px;font-size:10px;color:var(--text2)">r=${r} (${keys[r-1]})</span><span class="${best?'fbest':'fcand'}">e[${i}][${r-1}]=${lc.toFixed(3)} + e[${r+1}][${j}]=${rc.toFixed(3)} + ${wij.toFixed(3)} = ${c.toFixed(3)}${best?' ✓ min':''}</span></div>`;
+  }
+  h+=`<div class="frow" style="margin-top:6px"><span class="flbl">→ e[${i}][${j}]</span><span class="fval">= <strong>${dpE[i][j].toFixed(4)}</strong>, root[${i}][${j}] = ${dpRoot[i][j]} (${keys[dpRoot[i][j]-1]})</span></div>`;
+  fb.innerHTML=h;fb.classList.add('on');
+}
+
+function dpDrawTree(si,sj){
+  const i0=si!==undefined?si:1,j0=sj!==undefined?sj:N;
+  if(!dpRoot[i0]||dpRoot[i0][j0]===undefined)return;
+  const isFull=i0===1&&j0===N;
+  document.getElementById('dp-tree-info').innerHTML=
+    isFull?`<strong>Full OBST</strong> — e[1][${N}] = ${dpE[1][N].toFixed(4)}`
+          :`Subtree keys <strong>${i0}..${j0}</strong> — root: <strong>${keys[dpRoot[i0][j0]-1]}</strong>`;
+  const W=420,nR=18,lR=12;const nodes=[],edges=[];
+  function build(i,j,d,xL,xR){
+    const x=(xL+xR)/2,y=d*75+38;
+    if(i>j){nodes.push({x,y,label:'d'+(i-1),type:'leaf',depth:d});return{x,y,type:'leaf'}}
+    const r=dpRoot[i][j];
+    nodes.push({x,y,label:keys[r-1],type:'key',depth:d,cost:dpE[i][j],hl:i===i0&&j===j0});
+    const m=(xL+xR)/2;
+    const L=build(i,r-1,d+1,xL,m),R=build(r+1,j,d+1,m,xR);
+    edges.push({x1:x,y1:y+nR,x2:L.x,y2:L.y-(L.type==='leaf'?lR:nR)});
+    edges.push({x1:x,y1:y+nR,x2:R.x,y2:R.y-(R.type==='leaf'?lR:nR)});
+    return{x,y,type:'key'};
+  }
+  build(i0,j0,0,10,W-10);
+  const H=(Math.max(...nodes.map(n=>n.depth||0))+1)*75+70;
+  const svg=document.getElementById('dp-tree-svg');
+  svg.setAttribute('height',H);svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  let h='';
+  for(const e of edges)
+    h+=`<line x1="${e.x1.toFixed(1)}" y1="${e.y1.toFixed(1)}" x2="${e.x2.toFixed(1)}" y2="${e.y2.toFixed(1)}" stroke="#4a6cf7" stroke-width="1.8" stroke-opacity=".35"/>`;
+  for(const n of nodes){
+    if(n.type==='key'){
+      h+=`<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${nR}" fill="${n.hl?'#4a6cf7':'#edf1ff'}" stroke="${n.hl?'#4a6cf7':'#6b8afb'}" stroke-width="1.8"/>`;
+      h+=`<text x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="700" fill="${n.hl?'#fff':'#2a4acc'}">${n.label}</text>`;
+      if(n.cost!==undefined) h+=`<text x="${n.x.toFixed(1)}" y="${(n.y+nR+13).toFixed(1)}" text-anchor="middle" font-size="10" fill="#4a6cf7" opacity=".9">${n.cost.toFixed(3)}</text>`;
+    } else {
+      h+=`<rect x="${(n.x-lR).toFixed(1)}" y="${(n.y-lR).toFixed(1)}" width="${lR*2}" height="${lR*2}" rx="4" fill="#c8e6c4" stroke="#1a9e6a" stroke-width="1.4"/>`;
+      h+=`<text x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="10" fill="#1a6b4a">${n.label}</text>`;
+    }
+  }
+  svg.innerHTML=h;
+}
+
+/* ─── BF LOGIC ──────────────────────────── */
+let bfSteps=[],bfSi=0,bfSolved=false;
+let bfTotalFinal=0,bfUniqueFinal=0,bfRedundFinal=0;
+let bfTR=[],bfTC=[];
+
+function bfInit(){
+  bfSteps=[];bfSi=0;bfSolved=false;bfTR=[];bfTC=[];
+  for(let i=0;i<=N+2;i++){bfTR[i]=[];bfTC[i]=[]}
+  let total=0,unique=0,redund=0;
+  const seen={};
+  function wij(i,j){let w=q[i-1];for(let k=i;k<=j;k++)w+=p[k-1]+q[k];return w}
+  function rec(i,j){
+    total++;const key=`${i},${j}`;const isNew=!seen[key];
+    if(isNew){seen[key]=true;unique++}else{redund++}
+    if(i>j){
+      const cost=+(q[i-1].toFixed(4));
+      if(isNew){bfTR[i][j]=-1;bfTC[i][j]=cost}
+      bfSteps.push({type:'base',i,j,cost,total,unique,redund,isNew});return cost;
+    }
+    const w=wij(i,j);let mn=Infinity,br=-1;
+    for(let r=i;r<=j;r++){
+      const lc=rec(i,r-1),rc=rec(r+1,j),c=lc+rc+w;
+      if(c<mn){mn=c;br=r}
+    }
+    mn=+mn.toFixed(4);
+    if(isNew){bfTR[i][j]=br;bfTC[i][j]=mn}
+    bfSteps.push({type:isNew?'new':'redundant',i,j,cost:mn,bestR:br,isNew,total,unique,redund});
+    return mn;
+  }
+  rec(1,N);
+  bfTotalFinal=total;bfUniqueFinal=unique;bfRedundFinal=redund;
+}
+
+function bfStep(){
+  if(!bfSteps.length)bfInit();
+  if(bfSi>=bfSteps.length){bfDrawTree();return}
+  const s=bfSteps[bfSi];
+  document.getElementById('bf-total').textContent=s.total;
+  document.getElementById('bf-unique').textContent=s.unique;
+  document.getElementById('bf-redund').textContent=s.redund;
+  bfAppendLog(s,true);bfSi++;bfRefreshProg();
+  if(bfSi>=bfSteps.length){bfSolved=true;document.getElementById('bf-step-btn').textContent='Draw tree ▶';bfDrawTree();checkBoth()}
+}
+
+function bfSolveAll(){
+  bfInit();
+  const log=document.getElementById('bf-log');log.innerHTML='';
+  for(const s of bfSteps)bfAppendLog(s,false);
+  const last=bfSteps[bfSteps.length-1];
+  document.getElementById('bf-total').textContent=last.total;
+  document.getElementById('bf-unique').textContent=last.unique;
+  document.getElementById('bf-redund').textContent=last.redund;
+  log.scrollTop=log.scrollHeight;bfSi=bfSteps.length;bfSolved=true;
+  bfRefreshProg();bfDrawTree();checkBoth();
+}
+
+function bfRefreshProg(){
+  const tot=bfTotalFinal||bfSteps.length,done=Math.min(bfSi,tot),pct=tot?Math.round(done/tot*100):0;
+  document.getElementById('bf-prog').style.width=pct+'%';
+  document.getElementById('bf-counter').textContent=`${done} / ${tot} calls`;
+  document.getElementById('bf-prog-lbl').textContent=
+    bfSolved?`Done — ${tot} calls (${bfRedundFinal} redundant)`:`Call ${done} of ${tot}`;
+}
+
+function bfAppendLog(s,hl){
+  const log=document.getElementById('bf-log');
+  if(hl)log.querySelectorAll('.le-current').forEach(e=>e.classList.remove('le-current'));
+  const d=document.createElement('div');d.className='le';
+  if(s.type==='base'){
+    d.classList.add(hl?'le-current':'le-base');
+    d.textContent=`[#${s.total}] optCost(${s.i},${s.j}) → q[${s.i-1}]=${s.cost.toFixed(4)}  [base]`;
+  } else if(s.type==='new'){
+    d.classList.add(hl?'le-current':'le-new');
+    d.textContent=`[#${s.total}] optCost(${s.i},${s.j}) = ${s.cost.toFixed(4)}  root:${keys[s.bestR-1]}  [first]`;
+  } else {
+    d.classList.add(hl?'le-current':'le-redundant');
+    d.textContent=`[#${s.total}] optCost(${s.i},${s.j}) = ${s.cost.toFixed(4)}  [REDUNDANT ×${s.redund}]`;
+  }
+  log.appendChild(d);if(hl)log.scrollTop=log.scrollHeight;
+}
+
+function bfDrawTree(){
+  if(!bfSolved)return;
+  const W=420,nR=18,lR=12;const nodes=[],edges=[];
+  function build(i,j,d,xL,xR){
+    const x=(xL+xR)/2,y=d*75+38;
+    if(i>j){nodes.push({x,y,label:'d'+(i-1),type:'leaf',depth:d});return{x,y,type:'leaf'}}
+    const r=bfTR[i][j];
+    nodes.push({x,y,label:keys[r-1],type:'key',depth:d,cost:bfTC[i][j]});
+    const m=(xL+xR)/2;
+    const L=build(i,r-1,d+1,xL,m),R=build(r+1,j,d+1,m,xR);
+    edges.push({x1:x,y1:y+nR,x2:L.x,y2:L.y-(L.type==='leaf'?lR:nR)});
+    edges.push({x1:x,y1:y+nR,x2:R.x,y2:R.y-(R.type==='leaf'?lR:nR)});
+    return{x,y,type:'key'};
+  }
+  build(1,N,0,10,W-10);
+  const H=(Math.max(...nodes.map(n=>n.depth||0))+1)*75+70;
+  const svg=document.getElementById('bf-tree-svg');
+  svg.setAttribute('height',H);svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  let h='';
+  for(const e of edges)
+    h+=`<line x1="${e.x1.toFixed(1)}" y1="${e.y1.toFixed(1)}" x2="${e.x2.toFixed(1)}" y2="${e.y2.toFixed(1)}" stroke="#e8622a" stroke-width="1.8" stroke-opacity=".35"/>`;
+  for(const n of nodes){
+    if(n.type==='key'){
+      h+=`<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${nR}" fill="#fff3ee" stroke="#e8622a" stroke-width="1.8"/>`;
+      h+=`<text x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="700" fill="#a03010">${n.label}</text>`;
+      if(n.cost!==undefined) h+=`<text x="${n.x.toFixed(1)}" y="${(n.y+nR+13).toFixed(1)}" text-anchor="middle" font-size="10" fill="#e8622a" opacity=".9">${n.cost.toFixed(3)}</text>`;
+    } else {
+      h+=`<rect x="${(n.x-lR).toFixed(1)}" y="${(n.y-lR).toFixed(1)}" width="${lR*2}" height="${lR*2}" rx="4" fill="#c8e6c4" stroke="#1a9e6a" stroke-width="1.4"/>`;
+      h+=`<text x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="10" fill="#1a6b4a">${n.label}</text>`;
+    }
+  }
+  svg.innerHTML=h;
+  document.getElementById('bf-tree-info').innerHTML=
+    `<strong>Same OBST</strong> — cost = ${bfTC[1][N].toFixed(4)} — found in ${bfTotalFinal} calls`;
+}
+
+/* ─── RESET & COMPARE ───────────────────── */
+function resetAll(){
+  dpInit();dpRenderTables(-1,-1);
+  ['dp-cost-info','dp-root-info','dp-tree-info'].forEach(id=>document.getElementById(id).innerHTML='');
+  const fb=document.getElementById('dp-fbox');fb.classList.remove('on');fb.innerHTML='';
+  document.getElementById('dp-step-btn').textContent='Step ▶';
+  const dSvg=document.getElementById('dp-tree-svg');
+  dSvg.innerHTML=`<text x="210" y="18" text-anchor="middle" font-size="12" fill="#9e9890">Solve to see the tree</text>`;
+  dSvg.setAttribute('height',28);dpRefreshProg();
+  bfInit();bfSi=0;bfSolved=false;
+  document.getElementById('bf-log').innerHTML='';
+  ['bf-total','bf-unique','bf-redund'].forEach(id=>document.getElementById(id).textContent='0');
+  document.getElementById('bf-step-btn').textContent='Step ▶';
+  document.getElementById('bf-tree-info').innerHTML='';
+  const bSvg=document.getElementById('bf-tree-svg');
+  bSvg.innerHTML=`<text x="210" y="18" text-anchor="middle" font-size="12" fill="#9e9890">Solve to see the tree</text>`;
+  bSvg.setAttribute('height',28);bfRefreshProg();
+  document.getElementById('cmp-summary').classList.remove('on');
+  document.getElementById('chart-sec').classList.remove('on');
+}
+
+function checkBoth(){
+  if(!dpSolved||!bfSolved)return;
+  const ratio=(bfTotalFinal/dpSteps.length).toFixed(1);
+  document.getElementById('cmp-dp-steps').textContent=dpSteps.length;
+  document.getElementById('cmp-bf-steps').textContent=bfTotalFinal;
+  document.getElementById('cmp-ratio').textContent=`BF made ${ratio}× more calls than DP`;
+  document.getElementById('cmp-dp-u').textContent=dpSteps.length;
+  document.getElementById('cmp-bf-u').textContent=bfUniqueFinal;
+  document.getElementById('cmp-bf-r').textContent=bfRedundFinal;
+  document.getElementById('cmp-dp-cost').textContent=dpE[1][N].toFixed(4);
+  document.getElementById('cmp-bf-cost').textContent=bfTC[1][N].toFixed(4);
+  document.getElementById('cmp-winner').innerHTML=
+    `<strong>DP</strong> solved in ${dpSteps.length} steps &nbsp;·&nbsp; BF needed ${bfTotalFinal} calls — <strong>${ratio}× slower</strong> for n=${N}`;
+  document.getElementById('cmp-summary').classList.add('on');
+  document.getElementById('cmp-summary').scrollIntoView({behavior:'smooth',block:'nearest'});
+  setTimeout(drawCharts,350);
+}
+
+/* ─── EFFICIENCY CHARTS ─────────────────── */
+let cOps=null,cConc=null;
+
+function bfEst(n){
+  // realistic estimate of total recursive calls for OBST brute force
+  // uses ~(4^n / sqrt(pi*n)) scaled by small constant
+  return Math.round(Math.pow(4,n)/Math.sqrt(Math.PI*n)*1.1);
+}
+function dpEst(n){return Math.round(n*(n+1)*(n+2)/6)}
+
+function drawCharts(){
+  if(typeof Chart==='undefined')return;
+  document.getElementById('chart-sec').classList.add('on');
+  document.getElementById('chart-n-lbl').textContent=N;
+  document.getElementById('chart-n2').textContent=N;
+
+  const ns=[2,3,4,5,6,8,10];
+  const bfD=ns.map(n=>bfEst(n));
+  const dpD=ns.map(n=>dpEst(n));
+  // use real measured values for current N
+  const idx=ns.indexOf(N);
+  if(idx>=0){bfD[idx]=bfTotalFinal;dpD[idx]=dpSteps.length}
+
+  const gc='rgba(0,0,0,0.06)',tc='#5c5750';
+  const dpC='rgba(74,108,247,0.80)',bfC='rgba(232,98,42,0.80)';
+  const dpB='#4a6cf7',bfB='#e8622a';
+
+  const baseOpts={
+    responsive:true,
+    animation:{duration:800,easing:'easeOutQuart'},
+    plugins:{
+      legend:{labels:{color:tc,font:{size:11},boxWidth:14,padding:12}},
+      tooltip:{
+        backgroundColor:'#ffffff',borderColor:'rgba(0,0,0,0.12)',borderWidth:1,
+        titleColor:'#1a1816',bodyColor:'#5c5750',padding:10
+      }
+    },
+    scales:{
+      x:{ticks:{color:tc,font:{size:10}},grid:{color:gc},border:{color:gc}},
+      y:{type:'logarithmic',ticks:{color:tc,font:{size:10},
+          callback:v=>{if(v>=1e6)return(v/1e6).toFixed(0)+'M';if(v>=1000)return(v/1000).toFixed(0)+'K';return v}},
+         grid:{color:gc},border:{color:gc}}
+    }
+  };
+
+  // Chart 1: stacked bar ops
+  const c1=document.getElementById('chart-ops').getContext('2d');
+  if(cOps){cOps.destroy()}
+  cOps=new Chart(c1,{
+    type:'bar',
+    data:{
+      labels:ns.map(n=>`n=${n}`),
+      datasets:[
+        {label:'DP O(n³)',data:dpD,backgroundColor:dpC,borderColor:dpB,borderWidth:1,borderRadius:4,stack:'s'},
+        {label:'Brute Force O(4ⁿ)',data:bfD.map((b,i)=>Math.max(0,b-dpD[i])),backgroundColor:bfC,borderColor:bfB,borderWidth:1,borderRadius:4,stack:'s'}
+      ]
+    },
+    options:{...baseOpts,
+      scales:{...baseOpts.scales,
+        x:{...baseOpts.scales.x,stacked:true},
+        y:{...baseOpts.scales.y,stacked:true,title:{display:true,text:'Operations (approx)',color:tc,font:{size:10}}}
+      },
+      plugins:{...baseOpts.plugins,
+        title:{display:true,text:'Operations: Brute Force vs DP',color:'#1a1816',font:{size:12,weight:'700'},padding:{bottom:12}}
+      }
+    }
+  });
+
+  // Chart 2: concrete comparison
+  const bfN=bfTotalFinal,dpN=dpSteps.length,bf10=bfEst(10),dp10=dpEst(10);
+  const c2=document.getElementById('chart-conc').getContext('2d');
+  if(cConc){cConc.destroy()}
+  cConc=new Chart(c2,{
+    type:'bar',
+    data:{
+      labels:[`n=${N} BF`,`n=${N} DP`,`n=10 BF`,`n=10 DP`],
+      datasets:[{
+        data:[bfN,dpN,bf10,dp10],
+        backgroundColor:[bfC,dpC,bfC,dpC],
+        borderColor:[bfB,dpB,bfB,dpB],
+        borderWidth:1.5,borderRadius:6
+      }]
+    },
+    options:{...baseOpts,
+      plugins:{
+        legend:{display:false},
+        tooltip:{...baseOpts.plugins.tooltip,callbacks:{label:ctx=>`${ctx.parsed.y.toLocaleString()} operations`}},
+        title:{display:true,text:`Concrete Comparison: n=${N} and n=10`,color:'#1a1816',font:{size:12,weight:'700'},padding:{bottom:12}},
+      },
+      scales:{
+        x:{ticks:{color:tc,font:{size:10}},grid:{color:gc},border:{color:gc}},
+        y:{type:'logarithmic',
+           ticks:{color:tc,font:{size:10},callback:v=>{if(v>=1e4)return v.toLocaleString();if(v>=1e3)return v.toLocaleString();return v}},
+           grid:{color:gc},border:{color:gc},
+           title:{display:true,text:'Approx Comparisons',color:tc,font:{size:10}}
+        }
+      }
+    }
+  });
+
+  // value labels on concrete chart
+  const valPlugin={
+    id:'vl',
+    afterDatasetsDraw(chart){
+      const{ctx}=chart;ctx.save();
+      chart.data.datasets.forEach((ds,di)=>{
+        chart.getDatasetMeta(di).data.forEach((bar,i)=>{
+          const v=ds.data[i];if(!v||v<=0)return;
+          const label=v>=1000?v.toLocaleString():String(v);
+          ctx.fillStyle='#1a1816';ctx.font='bold 10px sans-serif';
+          ctx.textAlign='center';ctx.fillText(label,bar.x,bar.y-5);
+        });
+      });
+      ctx.restore();
+    }
+  };
+  if(!Chart.registry.plugins.get('vl'))Chart.register(valPlugin);
+  cConc.update();
+}
+
+/* ─── BOOT ──────────────────────────────── */
+(function(){
+  const s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+  s.onload=()=>{
+    buildInputs();dpInit();bfInit();
+    dpRenderTables(-1,-1);dpRefreshProg();bfRefreshProg();
+  };
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>
